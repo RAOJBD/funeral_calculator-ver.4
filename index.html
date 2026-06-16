@@ -519,7 +519,7 @@ details.toggle-result[open] .toggle-icon { transform: rotate(-90deg); }
       </div>
 
     </div>
-    
+
     <div style="font-size: 13px; color: var(--text3); text-align: center; margin-top: -6px; margin-bottom: 24px; line-height: 1.5; word-break: keep-all;">
       ※ 계절과 제단의 구조에 따라 실제 꽃 세팅과 디자인은 사진과 다를 수 있습니다.
     </div>
@@ -800,7 +800,6 @@ details.toggle-result[open] .toggle-icon { transform: rotate(-90deg); }
 
 </div><script>
 /* ── STATE ── */
-// 📌 cameFromOutside 상태를 추가하여 라우팅 이력을 기억합니다.
 const state = { region:null, mourners:null, altar:null, jesa:null, burial:null, cameFromOutside: false };
 
 function getRegionKey() {
@@ -917,19 +916,18 @@ function navBack(id) {
 }
 
 /* ── PREV / NEXT LOGIC ── */
-// 📌 그 외 지역 분기 처리 로직 수정
 function goNext(screenId) {
   if (screenId === 's-region') {
     if (!state.region) return;
     if (state.region === 'outside') { 
-      state.cameFromOutside = true; // 그 외 지역을 거쳤다는 기록 남기기
+      state.cameFromOutside = true;
       nav('s-region-outside'); 
       return; 
     }
     state.cameFromOutside = false;
     nav('s-mourners');
   } else if (screenId === 's-region-outside') {
-    if (!state.region || state.region === 'outside') return; // 선택하지 않았으면 안 넘어감
+    if (!state.region || state.region === 'outside') return;
     nav('s-mourners');
   } else if (screenId === 's-mourners') {
     if (!state.mourners) return;
@@ -944,12 +942,11 @@ function goNext(screenId) {
   }
 }
 
-// 📌 뒤로 가기 눌렀을 때 똑똑하게 이전 화면 찾아가기
 function goPrev(screenId) {
   if (screenId === 's-region') { navBack('s-intro'); }
   else if (screenId === 's-region-outside') { 
     state.cameFromOutside = false; 
-    state.region = 'outside'; // 메인에서 '그 외 지역'이 선택되어 있도록 강제 할당
+    state.region = 'outside'; 
     navBack('s-region'); 
     restoreSelections('s-region'); 
   }
@@ -1012,7 +1009,6 @@ function selectOpt(el) {
   if (screen) updateNextBtn(screen.id);
 }
 
-// 📌 버튼 활성화 체크 대상에 's-region-outside' 추가
 function updateNextBtn(screenId) {
   const btn = document.getElementById('next-' + screenId);
   if (!btn) return;
@@ -1020,7 +1016,7 @@ function updateNextBtn(screenId) {
   const key = map[screenId];
   
   let isValid = (key && state[key] !== null && state[key] !== undefined);
-  if (screenId === 's-region-outside' && state.region === 'outside') isValid = false; // 그 외 지역 화면에서 아직 지역을 안 골랐으면 비활성화
+  if (screenId === 's-region-outside' && state.region === 'outside') isValid = false;
   
   btn.disabled = !isValid;
 }
@@ -1211,9 +1207,20 @@ function shareResult() {
   const regionText = document.getElementById('sum-region').textContent || '미정';
   const mournerText = document.getElementById('sum-mourners').textContent || '미정';
   
-  const shareTitle = "[아정당 상조 — 장례 비용 계산 결과]";
-  const shareText = `${shareTitle}\n\n내가 선택한 조건(${regionText}, ${mournerText})의 예상 총비용은 [${totalAmtText}] 입니다.\n미리 확인하고 물가 상승 부담을 줄여보세요!\n\n🔗 장례 비용 직접 계산해보기:`;
-  const shareUrl = window.location.href;
+  // 📌 공유 시 현재 상태를 URL 파라미터로 변환
+  const baseUrl = window.location.href.split('?')[0];
+  const params = new URLSearchParams();
+  if(state.region) params.set('r', state.region);
+  if(state.mourners) params.set('m', state.mourners);
+  if(state.altar) params.set('a', state.altar);
+  if(state.jesa) params.set('j', state.jesa);
+  if(state.burial) params.set('b', state.burial);
+  
+  const shareUrl = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+
+  // 📌 요청하신 공유 문구 반영
+  const shareTitle = "[장례 비용 계산 결과 | 아정당 상조]";
+  const shareText = `${shareTitle}\n\n내가 선택한 조건(${regionText}, ${mournerText})의 예상 총비용은 [${totalAmtText}] 입니다.\n미리 확인하고 아껴보세요!\n\n🔗 장례 비용 직접 계산해보기:`;
   
   if (navigator.share) {
     navigator.share({
@@ -1222,9 +1229,8 @@ function shareResult() {
       url: shareUrl
     }).catch(err => console.log(err));
   } else {
-    // 인앱 브라우저 및 구형 환경 대응용 클립보드 복사 백업 흐름
     const textarea = document.createElement('textarea');
-    textarea.value = shareText + " " + shareUrl;
+    textarea.value = shareText + "\n" + shareUrl;
     document.body.appendChild(textarea);
     textarea.select();
     try {
@@ -1240,7 +1246,7 @@ function shareResult() {
 /* ── RESET ── */
 function resetAll() {
   state.region = state.mourners = state.altar = state.jesa = state.burial = null;
-  state.cameFromOutside = false; // 📌 초기화 시 라우팅 이력도 지움
+  state.cameFromOutside = false;
   document.getElementById('b-basic').checked = false;
   document.getElementById('b-veteran').checked = false;
   document.querySelectorAll('.opt-card').forEach(c => c.classList.remove('selected'));
@@ -1251,8 +1257,37 @@ function resetAll() {
   });
   tickerFrom = 0;
   if (tickerRaf) cancelAnimationFrame(tickerRaf);
+  
+  // URL 파라미터가 있다면 깔끔하게 지워주기
+  if (window.history.replaceState) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
   navBack('s-intro');
 }
+
+/* ── INITIALIZATION (공유 링크로 접속 시 바로 결과 화면 띄우기) ── */
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  
+  // URL에 지역(r)과 조문객(m) 정보가 최소한으로 들어있다면 결과창 하이패스 실행
+  if (params.has('r') && params.has('m')) {
+    state.region = params.get('r');
+    state.mourners = params.get('m');
+    state.altar = params.get('a') || null;
+    state.jesa = params.get('j') || null;
+    state.burial = params.get('b') || null;
+
+    // UI 선택 상태 복구
+    ['s-region', 's-region-outside', 's-mourners', 's-altar', 's-jesa', 's-burial'].forEach(id => restoreSelections(id));
+    
+    // 즉시 결과 화면으로 이동
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active', 'going-back'));
+    document.getElementById('s-result').classList.add('active');
+    
+    recalc(true);
+  }
+});
 </script>
 </body>
 </html>
